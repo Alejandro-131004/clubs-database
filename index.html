@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clubs Database</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --surface: #1a2027;
+    --surface-2: #232a33;
+    --border: #2d3640;
+    --text: #e8eaed;
+    --text-muted: #9aa0a6;
+    --accent: #4f8cff;
+    --accent-hover: #6ba0ff;
+    --green: #34a853;
+    --red: #ea4335;
+    --amber: #fbbc04;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 12px;
+  }
+  h1 { font-size: 22px; font-weight: 600; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+  .user-badge {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px;
+    color: var(--text-muted);
+  }
+  .toolbar {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .toolbar input, .toolbar select, .toolbar button {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; font-family: inherit;
+  }
+  .toolbar input { flex: 1; min-width: 200px; }
+  .toolbar button {
+    cursor: pointer; transition: background 0.15s;
+    background: var(--accent); border-color: var(--accent); color: white;
+    font-weight: 500;
+  }
+  .toolbar button:hover { background: var(--accent-hover); }
+  .toolbar button.secondary {
+    background: var(--surface); color: var(--text);
+    border-color: var(--border);
+  }
+  .toolbar button.secondary:hover { background: var(--surface-2); }
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px;
+  }
+  .stat-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 24px; font-weight: 600; margin-top: 4px; }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  th, td { padding: 10px 12px; text-align: left; font-size: 13px; }
+  th {
+    background: var(--surface-2); color: var(--text-muted);
+    font-weight: 500; text-transform: uppercase; font-size: 11px;
+    letter-spacing: 0.5px; cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  th:hover { color: var(--text); }
+  tr { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+  tr:last-child { border-bottom: none; }
+  tr:hover { background: var(--surface-2); }
+  .pos-badge {
+    display: inline-block; min-width: 26px; padding: 2px 6px;
+    border-radius: 4px; text-align: center; font-weight: 600; font-size: 12px;
+  }
+  .pos-1 { background: rgba(52,168,83,0.2); color: var(--green); }
+  .pos-2 { background: rgba(251,188,4,0.2); color: var(--amber); }
+  .pos-3 { background: rgba(234,67,53,0.2); color: var(--red); }
+  .league-tag {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    background: var(--surface-2); font-size: 11px; color: var(--text-muted);
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; width: 100%; max-width: 600px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { margin-bottom: 4px; font-size: 20px; }
+  .modal .modal-sub { color: var(--text-muted); margin-bottom: 20px; font-size: 14px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .form-group input, .form-group textarea {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; font-size: 14px; font-family: inherit;
+  }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;
+    padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .modal-actions button {
+    padding: 10px 18px; border-radius: 8px; font-size: 14px;
+    border: 1px solid var(--border); cursor: pointer; font-family: inherit;
+  }
+  .modal-actions .primary {
+    background: var(--accent); border-color: var(--accent); color: white;
+  }
+  .modal-actions .secondary {
+    background: var(--surface); color: var(--text);
+  }
+  .stats-mini {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 8px; margin: 12px 0; padding: 12px;
+    background: var(--bg); border-radius: 6px;
+  }
+  .stats-mini div { text-align: center; }
+  .stats-mini .v { font-size: 16px; font-weight: 600; }
+  .stats-mini .l { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+  .last-edit {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text-muted);
+  }
+  .loading-indicator {
+    color: var(--text-muted); font-size: 13px; padding: 8px 0;
+  }
+
+  /* Login screen */
+  .login-screen {
+    min-height: 80vh; display: flex; align-items: center; justify-content: center;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 32px; width: 100%; max-width: 380px;
+  }
+  .login-box h1 { margin-bottom: 6px; font-size: 22px; }
+  .login-box p { color: var(--text-muted); margin-bottom: 20px; font-size: 14px; }
+  .login-box .form-group { margin-bottom: 14px; }
+  .login-box button {
+    width: 100%; padding: 12px; margin-top: 8px;
+    background: var(--accent); color: white; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+  .login-box button:hover { background: var(--accent-hover); }
+  .login-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .login-error {
+    background: rgba(234,67,53,0.1); border: 1px solid rgba(234,67,53,0.3);
+    color: #f4a8a3; padding: 10px 12px; border-radius: 6px;
+    font-size: 13px; margin-bottom: 14px;
+  }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 12px 18px; border-radius: 8px; font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 200; opacity: 0; transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: var(--red); color: #f4a8a3; }
+  .toast.success { border-color: var(--green); color: #a8e0b5; }
+</style>
+</head>
+<body>
+
+<!-- Login screen -->
+<div class="container login-screen" id="loginScreen" style="display: none;">
+  <div class="login-box">
+    <h1>Clubs Database</h1>
+    <p>Sign in to access the database</p>
+    <div id="loginError" class="login-error" style="display: none;"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" autocomplete="email" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" />
+    </div>
+    <button id="loginBtn" onclick="signIn()">Sign in</button>
+  </div>
+</div>
+
+<!-- Main app -->
+<div class="container" id="appScreen" style="display: none;">
+  <header>
+    <div>
+      <h1>Clubs Database</h1>
+      <div class="subtitle">Scouting & contacts — 5 leagues</div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <span class="user-badge" id="userBadge"></span>
+      <button class="secondary" onclick="exportCSV()" style="padding: 8px 14px; border-radius: 8px; background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer; font-family: inherit; font-size: 14px;">Export CSV</button>
+      <button class="secondary" onclick="signOut()" style="padding: 8px 14px; border-radius: 8px; background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer; font-family: inherit; font-size: 14px;">Sign out</button>
+    </div>
+  </header>
+
+  <div id="loadingIndicator" class="loading-indicator">Loading data…</div>
+
+  <div class="stats" id="statsBar"></div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Search club…" oninput="render()" />
+    <select id="leagueFilter" onchange="render()">
+      <option value="">All leagues</option>
+    </select>
+    <select id="contactFilter" onchange="render()">
+      <option value="">All clubs</option>
+      <option value="missing">Missing contacts</option>
+      <option value="complete">With contacts</option>
+    </select>
+  </div>
+
+  <table id="clubsTable">
+    <thead>
+      <tr>
+        <th onclick="sortBy('league')">League</th>
+        <th onclick="sortBy('position')">#</th>
+        <th onclick="sortBy('name')">Club</th>
+        <th onclick="sortBy('points')">Pts</th>
+        <th onclick="sortBy('played')">P</th>
+        <th onclick="sortBy('w')">W</th>
+        <th onclick="sortBy('d')">D</th>
+        <th onclick="sortBy('l')">L</th>
+        <th onclick="sortBy('gf')">GF</th>
+        <th>Contacts</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2 id="modalTitle">Club</h2>
+    <div class="modal-sub" id="modalSub"></div>
+
+    <div class="stats-mini" id="statsMini"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Website</label>
+        <input type="url" id="f_website" placeholder="https://…" />
+      </div>
+      <div class="form-group">
+        <label>Email general</label>
+        <input type="email" id="f_email" placeholder="info@club.com" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" id="f_phone" />
+      </div>
+      <div class="form-group">
+        <label>Stadium</label>
+        <input type="text" id="f_stadium" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Scouting email</label>
+        <input type="email" id="f_scouting_email" placeholder="scouting@club.com" />
+      </div>
+      <div class="form-group">
+        <label>Scouting contact</label>
+        <input type="text" id="f_scouting_contact" placeholder="Name / role" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Sporting director</label>
+      <input type="text" id="f_director" />
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="f_notes" placeholder="Internal notes for the team…"></textarea>
+    </div>
+
+    <div class="last-edit" id="lastEdit"></div>
+
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+      <button class="primary" id="saveBtn" onclick="saveClub()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  // === Supabase config ===
+  const SUPABASE_URL = 'https://mkfrpmbbxlrghqszemii.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_nyIKdALE5Q9baReOiTXsXQ_bcaGeyI_';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // === State ===
+  let clubs = [];
+  let sortField = 'league';
+  let sortAsc = true;
+  let editingId = null;
+  let currentUser = null;
+
+  // === Auth ===
+  async function checkSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      showApp();
+    } else {
+      showLogin();
+    }
+  }
+
+  window.signIn = async function() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+
+    if (error) {
+      errorEl.textContent = error.message;
+      errorEl.style.display = 'block';
+      return;
+    }
+    currentUser = data.user;
+    showApp();
+  };
+
+  window.signOut = async function() {
+    await supabase.auth.signOut();
+    currentUser = null;
+    clubs = [];
+    showLogin();
+  };
+
+  function showLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appScreen').style.display = 'none';
+  }
+
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'block';
+    document.getElementById('userBadge').textContent = currentUser.email;
+    loadClubs();
+  }
+
+  // Allow Enter key on login
+  document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') window.signIn();
+  });
+
+  // === Data ===
+  async function loadClubs() {
+    const indicator = document.getElementById('loadingIndicator');
+    indicator.style.display = 'block';
+    indicator.textContent = 'Loading data…';
+
+    const { data, error } = await supabase
+      .from('clubs')
+      .select('*')
+      .order('league')
+      .order('position');
+
+    if (error) {
+      indicator.textContent = 'Error loading data: ' + error.message;
+      return;
+    }
+
+    clubs = data || [];
+    indicator.style.display = 'none';
+    populateLeagueFilter();
+    render();
+  }
+
+  function populateLeagueFilter() {
+    const sel = document.getElementById('leagueFilter');
+    // Clear existing options except first
+    sel.innerHTML = '<option value="">All leagues</option>';
+    const leagues = [...new Set(clubs.map(c => c.league))];
+    leagues.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l; opt.textContent = l;
+      sel.appendChild(opt);
+    });
+  }
+
+  function hasContacts(c) {
+    return !!(c.email || c.scouting_email || c.phone || c.website);
+  }
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const league = document.getElementById('leagueFilter').value;
+    const contactF = document.getElementById('contactFilter').value;
+
+    return clubs.filter(c => {
+      if (search && !c.name.toLowerCase().includes(search)) return false;
+      if (league && c.league !== league) return false;
+      if (contactF === 'missing' && hasContacts(c)) return false;
+      if (contactF === 'complete' && !hasContacts(c)) return false;
+      return true;
+    });
+  }
+
+  function sortClubs(arr) {
+    return [...arr].sort((a, b) => {
+      let va = a[sortField], vb = b[sortField];
+      if (sortField === 'league') {
+        if (va === vb) return a.position - b.position;
+      }
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return sortAsc ? -1 : 1;
+      if (va > vb) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  window.sortBy = function(field) {
+    if (sortField === field) sortAsc = !sortAsc;
+    else { sortField = field; sortAsc = true; }
+    render();
+  };
+
+  window.render = function() {
+    const filtered = sortClubs(getFiltered());
+    const tbody = document.getElementById('tableBody');
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No clubs match the filters.</td></tr>';
+    } else {
+      tbody.innerHTML = filtered.map(c => {
+        const posClass = c.position <= 1 ? 'pos-1' : c.position <= 3 ? 'pos-2' : '';
+        const emailCount = [c.email, c.scouting_email].filter(Boolean).length;
+        const contacts = hasContacts(c)
+          ? `<span style="color: var(--green);">●</span> ${emailCount} email(s)`
+          : '<span style="color: var(--text-muted);">—</span>';
+        return `
+          <tr onclick="openModal(${c.id})">
+            <td><span class="league-tag">${escapeHtml(c.league)}</span></td>
+            <td><span class="pos-badge ${posClass}">${c.position}</span></td>
+            <td style="font-weight: 500;">${escapeHtml(c.name)}</td>
+            <td><strong>${c.points}</strong></td>
+            <td>${c.played}</td>
+            <td>${c.w}</td>
+            <td>${c.d}</td>
+            <td>${c.l}</td>
+            <td>${c.gf}</td>
+            <td>${contacts}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const stats = document.getElementById('statsBar');
+    const total = clubs.length;
+    const withContacts = clubs.filter(hasContacts).length;
+    const leagueCount = new Set(clubs.map(c => c.league)).size;
+    stats.innerHTML = `
+      <div class="stat-card"><div class="stat-label">Total clubs</div><div class="stat-value">${total}</div></div>
+      <div class="stat-card"><div class="stat-label">Leagues</div><div class="stat-value">${leagueCount}</div></div>
+      <div class="stat-card"><div class="stat-label">With contacts</div><div class="stat-value">${withContacts}</div></div>
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">${total - withContacts}</div></div>
+      <div class="stat-card"><div class="stat-label">Showing</div><div class="stat-value">${filtered.length}</div></div>
+    `;
+  };
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[c]);
+  }
+
+  window.openModal = function(id) {
+    const c = clubs.find(x => x.id === id);
+    if (!c) return;
+    editingId = id;
+    document.getElementById('modalTitle').textContent = c.name;
+    document.getElementById('modalSub').textContent = `${c.league} · ${c.country} · Position ${c.position}`;
+
+    document.getElementById('statsMini').innerHTML = `
+      <div><div class="v">${c.points}</div><div class="l">Pts</div></div>
+      <div><div class="v">${c.played}</div><div class="l">P</div></div>
+      <div><div class="v">${c.w}</div><div class="l">W</div></div>
+      <div><div class="v">${c.d}</div><div class="l">D</div></div>
+      <div><div class="v">${c.l}</div><div class="l">L</div></div>
+      <div><div class="v">${c.gf}</div><div class="l">GF</div></div>
+      <div><div class="v">${c.position}</div><div class="l">#</div></div>
+    `;
+
+    document.getElementById('f_website').value = c.website || '';
+    document.getElementById('f_email').value = c.email || '';
+    document.getElementById('f_phone').value = c.phone || '';
+    document.getElementById('f_stadium').value = c.stadium || '';
+    document.getElementById('f_scouting_email').value = c.scouting_email || '';
+    document.getElementById('f_scouting_contact').value = c.scouting_contact || '';
+    document.getElementById('f_director').value = c.director || '';
+    document.getElementById('f_notes').value = c.notes || '';
+
+    const lastEditEl = document.getElementById('lastEdit');
+    if (c.updated_by && c.updated_at) {
+      const when = new Date(c.updated_at).toLocaleString('pt-PT');
+      lastEditEl.textContent = `Last edited by ${c.updated_by} on ${when}`;
+      lastEditEl.style.display = 'block';
+    } else {
+      lastEditEl.style.display = 'none';
+    }
+
+    document.getElementById('modal').classList.add('active');
+  };
+
+  window.closeModal = function() {
+    document.getElementById('modal').classList.remove('active');
+    editingId = null;
+  };
+
+  window.saveClub = async function() {
+    if (!editingId) return;
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const updates = {
+      website: document.getElementById('f_website').value.trim(),
+      email: document.getElementById('f_email').value.trim(),
+      phone: document.getElementById('f_phone').value.trim(),
+      stadium: document.getElementById('f_stadium').value.trim(),
+      scouting_email: document.getElementById('f_scouting_email').value.trim(),
+      scouting_contact: document.getElementById('f_scouting_contact').value.trim(),
+      director: document.getElementById('f_director').value.trim(),
+      notes: document.getElementById('f_notes').value.trim(),
+      updated_by: currentUser.email
+    };
+
+    const { data, error } = await supabase
+      .from('clubs')
+      .update(updates)
+      .eq('id', editingId)
+      .select()
+      .single();
+
+    btn.disabled = false;
+    btn.textContent = 'Save';
+
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+
+    // Update local copy
+    const idx = clubs.findIndex(c => c.id === editingId);
+    if (idx >= 0) clubs[idx] = data;
+
+    closeModal();
+    render();
+    showToast('Saved successfully', 'success');
+  };
+
+  function showToast(message, type) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => { t.className = 'toast'; }, 2500);
+  }
+
+  window.exportCSV = function() {
+    const headers = ['League','Country','Position','Club','Points','Played','W','D','L','GF',
+                     'Website','Email','Phone','Stadium','ScoutingEmail','ScoutingContact','Director','Notes','UpdatedBy','UpdatedAt'];
+    const rows = clubs.map(c => [
+      c.league, c.country, c.position, c.name, c.points, c.played, c.w, c.d, c.l, c.gf,
+      c.website, c.email, c.phone, c.stadium, c.scouting_email, c.scouting_contact,
+      c.director, c.notes, c.updated_by, c.updated_at
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'clubs_database.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Boot
+  checkSession();
+</script>
+</body>
+</html>
