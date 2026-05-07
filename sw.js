@@ -2,7 +2,7 @@
 // Driblify Scouting — Service Worker
 // To force an update on all installed apps, change CACHE_VERSION below.
 // =====================================================
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `driblify-scouting-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
