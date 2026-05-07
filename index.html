@@ -2,8 +2,18 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Clubs Database</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Driblify Scouting</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<meta name="theme-color" content="#0f1419" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Driblify Scouting" />
+<meta name="mobile-web-app-capable" content="yes" />
 <style>
   :root {
     --bg: #0f1419;
@@ -203,7 +213,7 @@
 <!-- Login screen -->
 <div class="container login-screen" id="loginScreen" style="display: none;">
   <div class="login-box">
-    <h1>Clubs Database</h1>
+    <h1>Driblify Scouting</h1>
     <p>Sign in to access the database</p>
     <div id="loginError" class="login-error" style="display: none;"></div>
     <div class="form-group">
@@ -222,8 +232,8 @@
 <div class="container" id="appScreen" style="display: none;">
   <header>
     <div>
-      <h1>Clubs Database</h1>
-      <div class="subtitle">Scouting & contacts — 5 leagues</div>
+      <h1>Driblify Scouting</h1>
+      <div class="subtitle">Clubs database — scouting & contacts</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
       <span class="user-badge" id="userBadge"></span>
@@ -642,6 +652,15 @@
 
   // Boot
   checkSession();
+
+  // Register service worker for offline / PWA install
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
 </script>
 </body>
 </html>

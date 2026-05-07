@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background with subtle gradient matching the app's accent color -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f8cff"/>
+      <stop offset="100%" stop-color="#2d5fb8"/>
+    </linearGradient>
+    <radialGradient id="ballShade" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#d8dde3"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!-- Soccer ball -->
+  <g transform="translate(256, 256)">
+    <!-- Ball body -->
+    <circle cx="0" cy="0" r="155" fill="url(#ballShade)" stroke="#1a2027" stroke-width="3"/>
+
+    <!-- Central black pentagon -->
+    <polygon points="0,-60 57,-19 35,49 -35,49 -57,-19"
+             fill="#1a2027"/>
+
+    <!-- Top pentagon hint -->
+    <polygon points="0,-155 50,-130 30,-75 -30,-75 -50,-130"
+             fill="#1a2027" opacity="0.85"/>
+
+    <!-- Bottom-left pentagon hint -->
+    <polygon points="-95,30 -55,15 -35,55 -75,95 -125,75"
+             fill="#1a2027" opacity="0.85"/>
+
+    <!-- Bottom-right pentagon hint -->
+    <polygon points="95,30 55,15 35,55 75,95 125,75"
+             fill="#1a2027" opacity="0.85"/>
+
+    <!-- Connecting lines (hexagon edges) -->
+    <g stroke="#1a2027" stroke-width="3" fill="none" opacity="0.6">
+      <line x1="0" y1="-60" x2="0" y2="-75"/>
+      <line x1="57" y1="-19" x2="95" y2="30"/>
+      <line x1="-57" y1="-19" x2="-95" y2="30"/>
+      <line x1="35" y1="49" x2="55" y2="15"/>
+      <line x1="-35" y1="49" x2="-55" y2="15"/>
+    </g>
+
+    <!-- Subtle highlight on top-left for 3D effect -->
+    <ellipse cx="-55" cy="-65" rx="45" ry="22" fill="white" opacity="0.25"/>
+  </g>
+</svg>
