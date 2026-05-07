@@ -206,9 +206,41 @@
   .toast.show { opacity: 1; }
   .toast.error { border-color: var(--red); color: #f4a8a3; }
   .toast.success { border-color: var(--green); color: #a8e0b5; }
+
+  /* Update banner */
+  .update-banner {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--accent); color: white;
+    padding: 10px 20px; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; z-index: 300;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .update-banner.show { transform: translateY(0); }
+  .update-banner button {
+    background: white; color: var(--accent);
+    border: none; padding: 6px 14px; border-radius: 6px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+    font-size: 13px;
+  }
+  .update-banner button:hover { background: #f0f0f0; }
+  .update-banner .dismiss {
+    background: transparent; color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+  }
+  .update-banner .dismiss:hover { background: rgba(255,255,255,0.1); }
 </style>
 </head>
 <body>
+
+<!-- Update banner (shown when new version is available) -->
+<div class="update-banner" id="updateBanner">
+  <span>🎉 New version available</span>
+  <button onclick="applyUpdate()">Update now</button>
+  <button class="dismiss" onclick="dismissUpdate()">Later</button>
+</div>
 
 <!-- Login screen -->
 <div class="container login-screen" id="loginScreen" style="display: none;">
@@ -653,14 +685,65 @@
   // Boot
   checkSession();
 
-  // Register service worker for offline / PWA install
+  // ============================================================
+  // Service Worker — register and detect new versions
+  // ============================================================
+  let waitingWorker = null;
+
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        // If there's already a waiting worker on first load, show banner
+        if (registration.waiting) {
+          waitingWorker = registration.waiting;
+          showUpdateBanner();
+        }
+
+        // Detect when a new worker is being installed
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            // New worker installed and waiting (because old one is still controlling)
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              waitingWorker = newWorker;
+              showUpdateBanner();
+            }
+          });
+        });
+
+        // When the new SW takes control, reload the page
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+
+        // Check for updates every 60 seconds (useful for long-running app sessions)
+        setInterval(() => registration.update(), 60_000);
+      } catch (err) {
         console.warn('Service worker registration failed:', err);
-      });
+      }
     });
   }
+
+  function showUpdateBanner() {
+    document.getElementById('updateBanner').classList.add('show');
+  }
+
+  window.applyUpdate = function() {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+      // controllerchange listener above will reload the page
+    }
+  };
+
+  window.dismissUpdate = function() {
+    document.getElementById('updateBanner').classList.remove('show');
+  };
 </script>
 </body>
 </html>
