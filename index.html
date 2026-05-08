@@ -216,6 +216,81 @@
   .toast.error { border-color: var(--red); color: #f4a8a3; }
   .toast.success { border-color: var(--green); color: #a8e0b5; }
 
+  /* League info banner (collapsible) */
+  .league-banner {
+    background: linear-gradient(135deg, rgba(79,140,255,0.08), rgba(79,140,255,0.02));
+    border: 1px solid rgba(79,140,255,0.3);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  .league-banner-header {
+    padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+    gap: 12px;
+  }
+  .league-banner-header:hover { background: rgba(79,140,255,0.05); }
+  .league-banner-title {
+    font-size: 14px; font-weight: 600; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .league-banner-title::before {
+    content: 'ℹ️'; font-size: 16px;
+  }
+  .league-banner-actions {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .league-banner-edit {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .league-banner-edit:hover { color: var(--text); border-color: var(--accent); }
+  .league-banner-toggle {
+    color: var(--text-muted); font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+  .league-banner.expanded .league-banner-toggle { transform: rotate(180deg); }
+  .league-banner-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .league-banner.expanded .league-banner-body {
+    max-height: 2000px;
+  }
+  .league-banner-content {
+    padding: 0 18px 18px 18px;
+    border-top: 1px solid rgba(79,140,255,0.15);
+    margin-top: 4px;
+  }
+  .league-banner-section-title {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-muted); margin: 16px 0 10px 0;
+  }
+  .league-strengths-list {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 6px 14px;
+  }
+  .league-strength-item {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+    padding: 6px 0; padding-left: 18px; position: relative;
+  }
+  .league-strength-item::before {
+    content: '✓'; color: var(--green); position: absolute; left: 0; top: 6px;
+    font-weight: 700;
+  }
+  .league-description {
+    font-size: 13px; line-height: 1.6; color: var(--text);
+    white-space: pre-wrap;
+  }
+  .league-description strong { color: var(--accent); font-weight: 600; }
+  .league-banner-empty {
+    padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px;
+  }
+
   /* Update banner */
   .update-banner {
     position: fixed; top: 0; left: 0; right: 0;
@@ -303,6 +378,20 @@
     </select>
   </div>
 
+  <!-- League info banner: appears when filtering by a single league -->
+  <div class="league-banner" id="leagueBanner" style="display: none;">
+    <div class="league-banner-header" onclick="toggleLeagueBanner(event)">
+      <div class="league-banner-title" id="leagueBannerTitle">About this league</div>
+      <div class="league-banner-actions">
+        <button class="league-banner-edit" onclick="openLeagueEdit(event)">Edit</button>
+        <span class="league-banner-toggle">▾</span>
+      </div>
+    </div>
+    <div class="league-banner-body">
+      <div class="league-banner-content" id="leagueBannerContent"></div>
+    </div>
+  </div>
+
   <table id="clubsTable">
     <thead>
       <tr>
@@ -385,6 +474,10 @@
       <input type="text" id="f_portuguese_players" placeholder="0 / 1 — name, position, age" />
     </div>
     <div class="form-group">
+      <label>Current needs</label>
+      <input type="text" id="f_current_needs" placeholder="e.g. Wingers, full-backs" />
+    </div>
+    <div class="form-group">
       <label>Profile sought</label>
       <textarea id="f_profile_sought" placeholder="Player profile the club typically looks for…"></textarea>
     </div>
@@ -424,6 +517,30 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- League edit modal -->
+<div class="modal-overlay" id="leagueModal" onclick="if(event.target===this)closeLeagueModal()">
+  <div class="modal">
+    <h2 id="leagueModalTitle">Edit league</h2>
+    <div class="modal-sub" id="leagueModalSub"></div>
+
+    <div class="form-group" style="margin-top: 16px;">
+      <label>Key strengths (one per line)</label>
+      <textarea id="lf_strengths" placeholder="Each line is a bullet point" style="min-height: 160px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Description (long text — supports **bold** for headings)</label>
+      <textarea id="lf_description" placeholder="Long description… use **text** for bold headings" style="min-height: 200px;"></textarea>
+    </div>
+
+    <div class="last-edit" id="leagueLastEdit"></div>
+
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeLeagueModal()">Cancel</button>
+      <button class="primary" id="leagueSaveBtn" onclick="saveLeague()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -435,9 +552,11 @@
 
   // === State ===
   let clubs = [];
+  let leagues = {}; // keyed by league name → { name, country, strengths, description, updated_at, updated_by }
   let sortField = 'league';
   let sortAsc = true;
   let editingId = null;
+  let editingLeague = null;
   let currentUser = null;
 
   // === Auth ===
@@ -519,8 +638,18 @@
     clubs = data || [];
     indicator.style.display = 'none';
     populateFilters();
+    await loadLeagues();
     render();
   }
+
+  async function loadLeagues() {
+    const { data, error } = await supabase.from('leagues').select('*');
+    if (error) {
+      console.warn('Could not load leagues:', error.message);
+      return;
+    }
+    leagues = {};
+    (data || []).forEach(l => { leagues[l.name] = l; });
 
   function populateFilters() {
     const leagueSel = document.getElementById('leagueFilter');
@@ -590,6 +719,9 @@
   window.render = function() {
     const filtered = sortClubs(getFiltered());
     const tbody = document.getElementById('tableBody');
+
+    // Update league info banner based on current filter
+    updateLeagueBanner();
 
     if (filtered.length === 0) {
       tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No clubs match the filters.</td></tr>';
@@ -677,6 +809,7 @@
     document.getElementById('f_sporting_director').value = c.sporting_director || c.director || '';
     document.getElementById('f_coach').value = c.coach || '';
     document.getElementById('f_portuguese_players').value = c.portuguese_players || '';
+    document.getElementById('f_current_needs').value = c.current_needs || '';
     document.getElementById('f_profile_sought').value = c.profile_sought || '';
     document.getElementById('f_priority_positions').value = c.priority_positions || '';
     document.getElementById('f_preferred_market').value = c.preferred_market || '';
@@ -718,6 +851,7 @@
       sporting_director: document.getElementById('f_sporting_director').value.trim(),
       coach: document.getElementById('f_coach').value.trim(),
       portuguese_players: document.getElementById('f_portuguese_players').value.trim(),
+      current_needs: document.getElementById('f_current_needs').value.trim(),
       profile_sought: document.getElementById('f_profile_sought').value.trim(),
       priority_positions: document.getElementById('f_priority_positions').value.trim(),
       preferred_market: document.getElementById('f_preferred_market').value.trim(),
@@ -786,6 +920,144 @@
     a.download = 'clubs_database.csv';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // ============================================================
+  // League info banner — shown when filtering by a single league
+  // ============================================================
+  function updateLeagueBanner() {
+    const selectedLeague = document.getElementById('leagueFilter').value;
+    const banner = document.getElementById('leagueBanner');
+    const titleEl = document.getElementById('leagueBannerTitle');
+    const contentEl = document.getElementById('leagueBannerContent');
+
+    if (!selectedLeague) {
+      banner.style.display = 'none';
+      banner.classList.remove('expanded');
+      return;
+    }
+
+    banner.style.display = 'block';
+    titleEl.textContent = `About ${selectedLeague}`;
+
+    const info = leagues[selectedLeague];
+    const hasStrengths = info && Array.isArray(info.strengths) && info.strengths.length > 0;
+    const hasDesc = info && info.description && info.description.trim();
+
+    if (!info || (!hasStrengths && !hasDesc)) {
+      contentEl.innerHTML = `<div class="league-banner-empty">
+        No info yet for this league. Click <strong>Edit</strong> to add strengths and description.
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    if (hasStrengths) {
+      html += '<div class="league-banner-section-title">Key strengths</div>';
+      html += '<div class="league-strengths-list">';
+      info.strengths.forEach(s => {
+        html += `<div class="league-strength-item">${escapeHtml(s)}</div>`;
+      });
+      html += '</div>';
+    }
+    if (hasDesc) {
+      html += '<div class="league-banner-section-title">Description</div>';
+      html += `<div class="league-description">${formatDescription(info.description)}</div>`;
+    }
+    contentEl.innerHTML = html;
+  }
+
+  // Convert **text** to <strong>text</strong> safely (after escaping)
+  function formatDescription(text) {
+    return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  window.toggleLeagueBanner = function(e) {
+    e.stopPropagation();
+    document.getElementById('leagueBanner').classList.toggle('expanded');
+  };
+
+  window.openLeagueEdit = function(e) {
+    e.stopPropagation();
+    const selectedLeague = document.getElementById('leagueFilter').value;
+    if (!selectedLeague) return;
+
+    editingLeague = selectedLeague;
+    const info = leagues[selectedLeague] || {};
+
+    document.getElementById('leagueModalTitle').textContent = `Edit info — ${selectedLeague}`;
+    document.getElementById('leagueModalSub').textContent =
+      'This info shows in the banner above the clubs table.';
+
+    const strengths = Array.isArray(info.strengths) ? info.strengths.join('\n') : '';
+    document.getElementById('lf_strengths').value = strengths;
+    document.getElementById('lf_description').value = info.description || '';
+
+    const lastEditEl = document.getElementById('leagueLastEdit');
+    if (info.updated_by && info.updated_at) {
+      const when = new Date(info.updated_at).toLocaleString('pt-PT');
+      lastEditEl.textContent = `Last edited by ${info.updated_by} on ${when}`;
+      lastEditEl.style.display = 'block';
+    } else {
+      lastEditEl.style.display = 'none';
+    }
+
+    document.getElementById('leagueModal').classList.add('active');
+  };
+
+  window.closeLeagueModal = function() {
+    document.getElementById('leagueModal').classList.remove('active');
+    editingLeague = null;
+  };
+
+  window.saveLeague = async function() {
+    if (!editingLeague) return;
+    const btn = document.getElementById('leagueSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    // Convert strengths textarea into a clean array (one item per non-empty line)
+    const strengthsText = document.getElementById('lf_strengths').value;
+    const strengths = strengthsText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const description = document.getElementById('lf_description').value.trim();
+
+    // Get country from existing record or any club in that league
+    const existing = leagues[editingLeague];
+    const country = existing?.country
+      || (clubs.find(c => c.league === editingLeague)?.country)
+      || '';
+
+    const payload = {
+      name: editingLeague,
+      country,
+      strengths,
+      description,
+      updated_by: currentUser.email
+    };
+
+    // Upsert (insert or update on conflict by name)
+    const { data, error } = await supabase
+      .from('leagues')
+      .upsert(payload, { onConflict: 'name' })
+      .select()
+      .single();
+
+    btn.disabled = false;
+    btn.textContent = 'Save';
+
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+
+    leagues[editingLeague] = data;
+    closeLeagueModal();
+    updateLeagueBanner();
+    showToast('League info saved', 'success');
   };
 
   // Boot
