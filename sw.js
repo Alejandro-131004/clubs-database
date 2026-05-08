@@ -2,7 +2,7 @@
 // Driblify Scouting — Service Worker
 // To force an update on all installed apps, change CACHE_VERSION below.
 // =====================================================
-const CACHE_VERSION = 'v4';  // 2026-05-08: added current_needs + leagues table with strengths
+const CACHE_VERSION = 'v5';  // 2026-05-08: hotfix syntax error in loadLeagues
 const CACHE_NAME = `driblify-scouting-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
