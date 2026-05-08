@@ -136,6 +136,15 @@
   }
   .form-group textarea { resize: vertical; min-height: 80px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .section-title {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--accent);
+    margin: 20px 0 12px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title:first-of-type { margin-top: 8px; }
   .modal-actions {
     display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;
     padding-top: 16px; border-top: 1px solid var(--border);
@@ -283,10 +292,14 @@
     <select id="leagueFilter" onchange="render()">
       <option value="">All leagues</option>
     </select>
+    <select id="countryFilter" onchange="render()">
+      <option value="">All countries</option>
+    </select>
     <select id="contactFilter" onchange="render()">
       <option value="">All clubs</option>
       <option value="missing">Missing contacts</option>
       <option value="complete">With contacts</option>
+      <option value="has_portuguese">Has Portuguese players</option>
     </select>
   </div>
 
@@ -302,6 +315,7 @@
         <th onclick="sortBy('d')">D</th>
         <th onclick="sortBy('l')">L</th>
         <th onclick="sortBy('gf')">GF</th>
+        <th title="Portuguese players in squad">🇵🇹</th>
         <th>Contacts</th>
       </tr>
     </thead>
@@ -317,6 +331,7 @@
 
     <div class="stats-mini" id="statsMini"></div>
 
+    <h3 class="section-title">Contacts</h3>
     <div class="form-row">
       <div class="form-group">
         <label>Website</label>
@@ -347,13 +362,55 @@
         <input type="text" id="f_scouting_contact" placeholder="Name / role" />
       </div>
     </div>
-    <div class="form-group">
-      <label>Sporting director</label>
-      <input type="text" id="f_director" />
+
+    <h3 class="section-title">Staff</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>President</label>
+        <input type="text" id="f_president" />
+      </div>
+      <div class="form-group">
+        <label>Sporting director</label>
+        <input type="text" id="f_sporting_director" />
+      </div>
     </div>
     <div class="form-group">
-      <label>Notes</label>
-      <textarea id="f_notes" placeholder="Internal notes for the team…"></textarea>
+      <label>Coach</label>
+      <input type="text" id="f_coach" />
+    </div>
+
+    <h3 class="section-title">Scouting & player profile</h3>
+    <div class="form-group">
+      <label>Portuguese players in squad</label>
+      <input type="text" id="f_portuguese_players" placeholder="0 / 1 — name, position, age" />
+    </div>
+    <div class="form-group">
+      <label>Profile sought</label>
+      <textarea id="f_profile_sought" placeholder="Player profile the club typically looks for…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Priority positions</label>
+        <input type="text" id="f_priority_positions" placeholder="e.g. winger, full-back" />
+      </div>
+      <div class="form-group">
+        <label>Preferred market</label>
+        <input type="text" id="f_preferred_market" placeholder="e.g. Portugal, Balkans" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Hiring probability (Portuguese)</label>
+      <input type="text" id="f_hiring_probability" placeholder="e.g. High / 60% / club is open" />
+    </div>
+    <div class="form-group">
+      <label>Why this club is interesting</label>
+      <textarea id="f_why_choose_club" placeholder="Why a young player would target this club…"></textarea>
+    </div>
+
+    <h3 class="section-title">Other</h3>
+    <div class="form-group">
+      <label>Notes / sources</label>
+      <textarea id="f_notes" placeholder="Internal notes, sources, links…"></textarea>
     </div>
 
     <div class="last-edit" id="lastEdit"></div>
@@ -461,19 +518,25 @@
 
     clubs = data || [];
     indicator.style.display = 'none';
-    populateLeagueFilter();
+    populateFilters();
     render();
   }
 
-  function populateLeagueFilter() {
-    const sel = document.getElementById('leagueFilter');
-    // Clear existing options except first
-    sel.innerHTML = '<option value="">All leagues</option>';
-    const leagues = [...new Set(clubs.map(c => c.league))];
-    leagues.forEach(l => {
+  function populateFilters() {
+    const leagueSel = document.getElementById('leagueFilter');
+    leagueSel.innerHTML = '<option value="">All leagues</option>';
+    [...new Set(clubs.map(c => c.league))].sort().forEach(l => {
       const opt = document.createElement('option');
       opt.value = l; opt.textContent = l;
-      sel.appendChild(opt);
+      leagueSel.appendChild(opt);
+    });
+
+    const countrySel = document.getElementById('countryFilter');
+    countrySel.innerHTML = '<option value="">All countries</option>';
+    [...new Set(clubs.map(c => c.country))].sort().forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      countrySel.appendChild(opt);
     });
   }
 
@@ -481,16 +544,25 @@
     return !!(c.email || c.scouting_email || c.phone || c.website);
   }
 
+  function hasPortuguese(c) {
+    if (!c.portuguese_players) return false;
+    const v = c.portuguese_players.trim();
+    return v !== '' && v !== '0' && !v.toLowerCase().includes('0 identificad');
+  }
+
   function getFiltered() {
     const search = document.getElementById('searchInput').value.toLowerCase().trim();
     const league = document.getElementById('leagueFilter').value;
+    const country = document.getElementById('countryFilter').value;
     const contactF = document.getElementById('contactFilter').value;
 
     return clubs.filter(c => {
       if (search && !c.name.toLowerCase().includes(search)) return false;
       if (league && c.league !== league) return false;
+      if (country && c.country !== country) return false;
       if (contactF === 'missing' && hasContacts(c)) return false;
       if (contactF === 'complete' && !hasContacts(c)) return false;
+      if (contactF === 'has_portuguese' && !hasPortuguese(c)) return false;
       return true;
     });
   }
@@ -520,7 +592,7 @@
     const tbody = document.getElementById('tableBody');
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No clubs match the filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No clubs match the filters.</td></tr>';
     } else {
       tbody.innerHTML = filtered.map(c => {
         const posClass = c.position <= 1 ? 'pos-1' : c.position <= 3 ? 'pos-2' : '';
@@ -528,17 +600,22 @@
         const contacts = hasContacts(c)
           ? `<span style="color: var(--green);">●</span> ${emailCount} email(s)`
           : '<span style="color: var(--text-muted);">—</span>';
+        const dash = '<span style="color: var(--text-muted);">—</span>';
+        const ptIcon = hasPortuguese(c)
+          ? '<span style="color: var(--green); font-weight: 600;" title="' + escapeHtml(c.portuguese_players) + '">●</span>'
+          : dash;
         return `
           <tr onclick="openModal(${c.id})">
             <td><span class="league-tag">${escapeHtml(c.league)}</span></td>
             <td><span class="pos-badge ${posClass}">${c.position}</span></td>
             <td style="font-weight: 500;">${escapeHtml(c.name)}</td>
-            <td><strong>${c.points}</strong></td>
-            <td>${c.played}</td>
-            <td>${c.w}</td>
-            <td>${c.d}</td>
-            <td>${c.l}</td>
-            <td>${c.gf}</td>
+            <td>${c.points != null ? '<strong>' + c.points + '</strong>' : dash}</td>
+            <td>${c.played != null ? c.played : dash}</td>
+            <td>${c.w != null ? c.w : dash}</td>
+            <td>${c.d != null ? c.d : dash}</td>
+            <td>${c.l != null ? c.l : dash}</td>
+            <td>${c.gf != null ? c.gf : dash}</td>
+            <td>${ptIcon}</td>
             <td>${contacts}</td>
           </tr>
         `;
@@ -548,12 +625,13 @@
     const stats = document.getElementById('statsBar');
     const total = clubs.length;
     const withContacts = clubs.filter(hasContacts).length;
+    const withPortuguese = clubs.filter(hasPortuguese).length;
     const leagueCount = new Set(clubs.map(c => c.league)).size;
     stats.innerHTML = `
       <div class="stat-card"><div class="stat-label">Total clubs</div><div class="stat-value">${total}</div></div>
       <div class="stat-card"><div class="stat-label">Leagues</div><div class="stat-value">${leagueCount}</div></div>
       <div class="stat-card"><div class="stat-label">With contacts</div><div class="stat-value">${withContacts}</div></div>
-      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">${total - withContacts}</div></div>
+      <div class="stat-card"><div class="stat-label">With Portuguese 🇵🇹</div><div class="stat-value">${withPortuguese}</div></div>
       <div class="stat-card"><div class="stat-label">Showing</div><div class="stat-value">${filtered.length}</div></div>
     `;
   };
@@ -572,14 +650,21 @@
     document.getElementById('modalTitle').textContent = c.name;
     document.getElementById('modalSub').textContent = `${c.league} · ${c.country} · Position ${c.position}`;
 
-    document.getElementById('statsMini').innerHTML = `
-      <div><div class="v">${c.points}</div><div class="l">Pts</div></div>
-      <div><div class="v">${c.played}</div><div class="l">P</div></div>
-      <div><div class="v">${c.w}</div><div class="l">W</div></div>
-      <div><div class="v">${c.d}</div><div class="l">D</div></div>
-      <div><div class="v">${c.l}</div><div class="l">L</div></div>
-      <div><div class="v">${c.gf}</div><div class="l">GF</div></div>
+    const dashStat = '—';
+    const fmt = (v) => (v != null ? v : dashStat);
+    const hasStats = c.points != null;
+    document.getElementById('statsMini').innerHTML = hasStats ? `
+      <div><div class="v">${fmt(c.points)}</div><div class="l">Pts</div></div>
+      <div><div class="v">${fmt(c.played)}</div><div class="l">P</div></div>
+      <div><div class="v">${fmt(c.w)}</div><div class="l">W</div></div>
+      <div><div class="v">${fmt(c.d)}</div><div class="l">D</div></div>
+      <div><div class="v">${fmt(c.l)}</div><div class="l">L</div></div>
+      <div><div class="v">${fmt(c.gf)}</div><div class="l">GF</div></div>
       <div><div class="v">${c.position}</div><div class="l">#</div></div>
+    ` : `
+      <div style="grid-column: 1 / -1; padding: 8px; text-align: center; color: var(--text-muted); font-size: 12px;">
+        No league stats available for this club
+      </div>
     `;
 
     document.getElementById('f_website').value = c.website || '';
@@ -588,7 +673,15 @@
     document.getElementById('f_stadium').value = c.stadium || '';
     document.getElementById('f_scouting_email').value = c.scouting_email || '';
     document.getElementById('f_scouting_contact').value = c.scouting_contact || '';
-    document.getElementById('f_director').value = c.director || '';
+    document.getElementById('f_president').value = c.president || '';
+    document.getElementById('f_sporting_director').value = c.sporting_director || c.director || '';
+    document.getElementById('f_coach').value = c.coach || '';
+    document.getElementById('f_portuguese_players').value = c.portuguese_players || '';
+    document.getElementById('f_profile_sought').value = c.profile_sought || '';
+    document.getElementById('f_priority_positions').value = c.priority_positions || '';
+    document.getElementById('f_preferred_market').value = c.preferred_market || '';
+    document.getElementById('f_hiring_probability').value = c.hiring_probability || '';
+    document.getElementById('f_why_choose_club').value = c.why_choose_club || '';
     document.getElementById('f_notes').value = c.notes || '';
 
     const lastEditEl = document.getElementById('lastEdit');
@@ -621,7 +714,15 @@
       stadium: document.getElementById('f_stadium').value.trim(),
       scouting_email: document.getElementById('f_scouting_email').value.trim(),
       scouting_contact: document.getElementById('f_scouting_contact').value.trim(),
-      director: document.getElementById('f_director').value.trim(),
+      president: document.getElementById('f_president').value.trim(),
+      sporting_director: document.getElementById('f_sporting_director').value.trim(),
+      coach: document.getElementById('f_coach').value.trim(),
+      portuguese_players: document.getElementById('f_portuguese_players').value.trim(),
+      profile_sought: document.getElementById('f_profile_sought').value.trim(),
+      priority_positions: document.getElementById('f_priority_positions').value.trim(),
+      preferred_market: document.getElementById('f_preferred_market').value.trim(),
+      hiring_probability: document.getElementById('f_hiring_probability').value.trim(),
+      why_choose_club: document.getElementById('f_why_choose_club').value.trim(),
       notes: document.getElementById('f_notes').value.trim(),
       updated_by: currentUser.email
     };
@@ -659,11 +760,16 @@
 
   window.exportCSV = function() {
     const headers = ['League','Country','Position','Club','Points','Played','W','D','L','GF',
-                     'Website','Email','Phone','Stadium','ScoutingEmail','ScoutingContact','Director','Notes','UpdatedBy','UpdatedAt'];
+                     'Website','Email','Phone','Stadium','ScoutingEmail','ScoutingContact',
+                     'President','SportingDirector','Coach','PortuguesePlayers','ProfileSought',
+                     'PriorityPositions','PreferredMarket','HiringProbability','WhyChooseClub',
+                     'Notes','UpdatedBy','UpdatedAt'];
     const rows = clubs.map(c => [
       c.league, c.country, c.position, c.name, c.points, c.played, c.w, c.d, c.l, c.gf,
       c.website, c.email, c.phone, c.stadium, c.scouting_email, c.scouting_contact,
-      c.director, c.notes, c.updated_by, c.updated_at
+      c.president, c.sporting_director, c.coach, c.portuguese_players, c.profile_sought,
+      c.priority_positions, c.preferred_market, c.hiring_probability, c.why_choose_club,
+      c.notes, c.updated_by, c.updated_at
     ]);
     const csv = [headers, ...rows]
       .map(r => r.map(v => {
